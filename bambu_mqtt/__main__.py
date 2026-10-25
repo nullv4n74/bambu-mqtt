@@ -46,10 +46,10 @@ parser = argparse.ArgumentParser(
         "Note: The device ID is derived from the TLS certificate, so you do not need to "
         "provide it explicitly. The access code is required for MQTT authentication.\n\n"
         "Example usage:\n"
-        "  python -m bambu_mqtt --host 192.168.0.123 "
-        "--access-code YOUR_ACCESS_CODE --cert ./blcert.pem\n"
-        "  python -m bambu_mqtt --host 192.168.0.123 "
-        "--access-code YOUR_ACCESS_CODE --cert ./blcert.pem --log-level DEBUG\n\n"
+        "  python -m bambu_mqtt --host 192.0.2.10 "
+        "--access-code YOUR_PRINTER_ACCESS_CODE --cert ./blcert.pem\n"
+        "  python -m bambu_mqtt --host 192.0.2.10 "
+        "--access-code YOUR_PRINTER_ACCESS_CODE --cert ./blcert.pem --log-level DEBUG\n\n"
     ),
     formatter_class=argparse.RawTextHelpFormatter,
 )
