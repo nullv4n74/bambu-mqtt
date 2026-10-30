@@ -1,3 +1,4 @@
+
 [build-system]
 requires = ["setuptools>=77.0"]
 build-backend = "setuptools.build_meta"
@@ -5,12 +6,23 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "bambu-mqtt"
 version = "0.1.0"
-description = "Bambu Lab MQTT telemetry listener"
+description = "Bambu Lab MQTT telemetry collector with InfluxDB integration"
+readme = "README.md"
 requires-python = ">=3.14"
+license = "MIT"
+authors = [
+    { name = "NullVanta" },
+]
 dependencies = [
     "paho-mqtt",
     "cryptography",
+    "influxdb-client",
 ]
+
+[project.urls]
+Homepage = "https://github.com/NullVanta/bambu-mqtt"
+Repository = "https://github.com/NullVanta/bambu-mqtt"
+Issues = "https://github.com/NullVanta/bambu-mqtt/issues"
 
 [tool.setuptools.packages.find]
 include = ["bambu_mqtt*"]
