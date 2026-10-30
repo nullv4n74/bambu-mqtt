@@ -1,61 +1,34 @@
-"""Define typed data models for Bambu Lab printer telemetry.
 
-This module provides nested dataclasses representing printer status,
-temperature readings, connectivity, and Automatic Material System (AMS)
-information. These models provide a structured representation of telemetry
-for downstream processing, monitoring, and time-series storage.
-"""
+"""Parse and normalize Bambu Lab H2S printer telemetry."""
 
 from dataclasses import dataclass, field
 from typing import Any
 
 
 def _as_float(value: Any) -> float | None:
-    """Convert a value to float, returning None if invalid."""
+    """Convert a value to float."""
     try:
         return float(value) if value is not None else None
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return None
 
 
 def _as_int(value: Any) -> int | None:
-    """Convert a value to int, returning None if invalid."""
+    """Convert a value to int."""
     try:
         return int(value) if value is not None else None
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return None
 
 
 def _as_str(value: Any) -> str | None:
-    """Return a string value, or None if unavailable."""
+    """Convert a value to string, if valid."""
     return value if isinstance(value, str) else None
 
 
 @dataclass
-class Temperature:
-    """Represents a temperature reading from the printer."""
-
-    nozzle: float | None = None
-    nozzle_target: float | None = None
-    bed: float | None = None
-    bed_target: float | None = None
-    chamber: float | None = None
-    chamber_target: float | None = None
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Temperature":
-        """Create a Temperature instance from a dictionary."""
-        return cls(
-            nozzle=_as_float(data.get("nozzle_temper")),
-            nozzle_target=_as_float(data.get("nozzle_target_temper")),
-            bed=_as_float(data.get("bed_temper")),
-            bed_target=_as_float(data.get("bed_target_temper")),
-        )
-
-
-@dataclass
 class PrinterStatus:
-    """Represents the overall status of the printer."""
+    """Printer and print-job information."""
 
     state: str | None = None
     progress: float | None = None
@@ -66,26 +39,57 @@ class PrinterStatus:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "PrinterStatus":
-        """Create a PrinterStatus instance from a dictionary."""
         return cls(
-            state=_as_str(data.get("state")),
-            progress=_as_float(data.get("progress")),
-            current_layer=_as_int(data.get("current_layer")),
-            total_layers=_as_int(data.get("total_layers")),
-            remaining_minutes=_as_int(data.get("remaining_minutes")),
-            job_name=_as_str(data.get("job_name")),
+            state=_as_str(data.get("gcode_state")),
+            progress=_as_float(data.get("mc_percent")),
+            current_layer=_as_int(data.get("layer_num")),
+            total_layers=_as_int(data.get("total_layer_num")),
+            remaining_minutes=_as_int(data.get("mc_remaining_time")),
+            job_name=_as_str(data.get("subtask_name")),
         )
 
 
+
+@dataclass
+class Temperature:
+    """Printer temperature readings."""
+
+    nozzle: float | None = None
+    nozzle_target: float | None = None
+    bed: float | None = None
+    bed_target: float | None = None
+    chamber: float | None = None
+    chamber_target: float | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "Temperature":
+        """Create temperature readings from Bambu MQTT data."""
+
+        device = data.get("device", {})
+        ctc = device.get("ctc", {}) if isinstance(device, dict) else {}
+        ctc_info = ctc.get("info", {}) if isinstance(ctc, dict) else {}
+
+        return cls(
+            nozzle=_as_float(data.get("nozzle_temper")),
+            nozzle_target=_as_float(data.get("nozzle_target_temper")),
+            bed=_as_float(data.get("bed_temper")),
+            bed_target=_as_float(data.get("bed_target_temper")),
+            chamber=(
+                _as_float(ctc_info.get("temp"))
+                if isinstance(ctc_info, dict)
+                else None
+            ),
+            chamber_target=None,
+        )
+
 @dataclass
 class Connectivity:
-    """Represents the connectivity status of the printer."""
+    """Printer network connectivity."""
 
     wifi_signal: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Connectivity":
-        """Create a Connectivity instance from a dictionary."""
         return cls(
             wifi_signal=_as_str(data.get("wifi_signal")),
         )
@@ -93,68 +97,98 @@ class Connectivity:
 
 @dataclass
 class AMSTray:
-    """Represents a single tray in the Automatic Material System (AMS)."""
+    """Individual filament tray."""
 
     id: int | None = None
     filament_type: str | None = None
     color: str | None = None
     remaining: int | None = None
+    nozzle_temp_min: float | None = None
+    nozzle_temp_max: float | None = None
+    tray_diameter: float | None = None
+    tray_weight: float | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "AMSTray":
-        """Create an AMSTray instance from a dictionary."""
+        remaining = _as_int(data.get("remain"))
+
         return cls(
             id=_as_int(data.get("id")),
-            filament_type=_as_str(data.get("filament_type")),
-            color=_as_str(data.get("color")),
-            remaining=_as_int(data.get("remaining")),
+            filament_type=_as_str(data.get("tray_type")),
+            color=_as_str(data.get("tray_color")),
+            remaining=(
+                remaining if remaining is not None and remaining >= 0 else None
+            ),
+            nozzle_temp_min=_as_float(data.get("nozzle_temp_min")),
+            nozzle_temp_max=_as_float(data.get("nozzle_temp_max")),
+            tray_diameter=_as_float(data.get("tray_diameter")),
+            tray_weight=_as_float(data.get("tray_weight")),
         )
 
 
 @dataclass
 class AMSStatus:
-    """Represents the status of the Automatic Material System (AMS)."""
+    """One AMS unit and its filament trays."""
 
+    id: str | None = None
     temperature: float | None = None
     humidity: float | None = None
-    trays: list[AMSTray] | None = None
+    humidity_raw: float | None = None
+    trays: list[AMSTray] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "AMSStatus":
-        """Create an AMSStatus instance from a dictionary."""
-        trays_data = data.get("trays", [])
-        trays = [AMSTray.from_dict(tray) for tray in trays_data] if trays_data else None
+        tray_data = data.get("tray", [])
+
+        trays = [
+            AMSTray.from_dict(tray)
+            for tray in tray_data
+            if isinstance(tray, dict)
+        ] if isinstance(tray_data, list) else []
+
         return cls(
-            temperature=_as_float(data.get("ams_temper")),
-            humidity=_as_float(data.get("ams_humidity")),
+            id=_as_str(data.get("id")),
+            temperature=_as_float(data.get("temp")),
+            humidity=_as_float(data.get("humidity")),
+            humidity_raw=_as_float(data.get("humidity_raw")),
             trays=trays,
         )
 
 
 @dataclass
 class Telemetry:
-    """Represents the complete telemetry data from the printer."""
+    """Normalized Bambu Lab printer telemetry."""
 
     printer: PrinterStatus = field(default_factory=PrinterStatus)
     temperatures: Temperature = field(default_factory=Temperature)
     connectivity: Connectivity = field(default_factory=Connectivity)
-    ams: AMSStatus = field(default_factory=AMSStatus)
+    ams: list[AMSStatus] = field(default_factory=list)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Telemetry":
-        """Create telemetry from a parsed MQTT payload."""
-        print_data = data.get("print", data)
+    def from_dict(cls, payload: dict[str, Any]) -> "Telemetry":
+        """Parse a complete Bambu MQTT status payload."""
+
+        print_data = payload.get("print", payload)
 
         if not isinstance(print_data, dict):
-            print_data = {}
+            raise ValueError("Invalid MQTT payload: missing print dictionary")
+
+        ams_container = print_data.get("ams", {})
+        ams_units = (
+            ams_container.get("ams", [])
+            if isinstance(ams_container, dict)
+            else []
+        )
+
+        ams = [
+            AMSStatus.from_dict(unit)
+            for unit in ams_units
+            if isinstance(unit, dict)
+        ] if isinstance(ams_units, list) else []
 
         return cls(
             printer=PrinterStatus.from_dict(print_data),
             temperatures=Temperature.from_dict(print_data),
             connectivity=Connectivity.from_dict(print_data),
-            ams=AMSStatus.from_dict(
-                print_data.get("ams", {})
-                if isinstance(print_data.get("ams"), dict)
-                else {}
-            ),
+            ams=ams,
         )

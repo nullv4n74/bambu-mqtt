@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 paho-mqtt = "*"
 cryptography = "*"
+influxdb-client = "*"
 bambu-mqtt = {path = ".", editable = true}
 
 [dev-packages]

@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from types import TracebackType
+from typing import Self
 
 from bambu_mqtt.telemetry import Telemetry
 
@@ -11,21 +12,40 @@ class BaseWriter(ABC):
 
     @abstractmethod
     def write(self, telemetry: Telemetry) -> None:
-        """Write a telemetry snapshot to the configured backend."""
+        """Write a telemetry snapshot to the configured backend.
+
+        Args:
+            telemetry (Telemetry): Telemetry to write.
+
+        Raises:
+            NotImplementedError: Not yet implemented.
+        """
         raise NotImplementedError
 
     @abstractmethod
     def connect(self) -> None:
-        """Establish a connection to the backend."""
+        """Establish a connection.
+
+        Raises:
+            NotImplementedError: Not yet implemented.
+        """
         raise NotImplementedError
 
     @abstractmethod
     def disconnect(self) -> None:
-        """Close the connection to the backend."""
+        """Close the connection.
+
+        Raises:
+            NotImplementedError: Not yet implemented.
+        """
         raise NotImplementedError
 
-    def __enter__(self) -> "BaseWriter":
-        """Enter the runtime context related to this object."""
+    def __enter__(self) -> Self:
+        """Connect to the backend and enter the runtime context.
+
+        Returns:
+            Self: Writer object.
+        """
         self.connect()
         return self
 
@@ -35,5 +55,11 @@ class BaseWriter(ABC):
         exc_value: BaseException | None,
         traceback: TracebackType | None,
     ) -> None:
-        """Exit the runtime context related to this object."""
+        """Disconnect from the backend when leaving the runtime context.
+
+        Args:
+            exc_type (type[BaseException] | None): exit type.
+            exc_value (BaseException | None): exit value.
+            traceback (TracebackType | None): traceback.
+        """
         self.disconnect()

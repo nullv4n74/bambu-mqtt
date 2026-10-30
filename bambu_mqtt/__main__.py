@@ -13,12 +13,14 @@ import argparse
 import logging
 import signal
 from importlib.metadata import version, PackageNotFoundError
+import os
 from typing import Any
 from paho.mqtt.client import Client, MQTTMessage
 from bambu_mqtt.telemetry import Telemetry
 from bambu_mqtt.utils import connect_local_mqtt, extract_device_id_from_cert
 from bambu_mqtt.parser import Parser
 from bambu_mqtt.logger import configure_logging
+from bambu_mqtt.writers.influxdb import InfluxDBWriter
 
 logger = logging.getLogger("bambu_mqtt")
 
@@ -80,8 +82,29 @@ parser.add_argument(
     help="Show the version of the Bambu MQTT listener and exit.",
 )
 
+parser.add_argument(
+    "--influx-url",
+    default="http://localhost:8086",
+    help="InfluxDB server URL.",
+)
+parser.add_argument(
+    "--influx-token",
+    default=os.getenv("INFLUXDB_TOKEN"),
+    required=os.getenv("INFLUXDB_TOKEN") is None,
+    help="InfluxDB authentication token (or set INFLUXDB_TOKEN).",
+)
+parser.add_argument("--influx-org", required=True, help="InfluxDB organization.")
+parser.add_argument("--influx-bucket", required=True, help="InfluxDB bucket.")
+
 args = parser.parse_args()
 configure_logging(args.log_level)
+
+writer = InfluxDBWriter(
+    url=args.influx_url,
+    token=args.influx_token,
+    org=args.influx_org,
+    bucket=args.influx_bucket,
+)
 
 # Connect to printer via MQTT
 try:
@@ -111,10 +134,16 @@ def on_message(_client: Client, _userdata: Any, msg: MQTTMessage):
             data
         )  # TODO use telemetry object for further processing (e.g., logging, Grafana, InfluxDB)
         logger.debug("Received telemetry: %s", data)
+        with writer:
+            writer.write(telemetry)
+        logger.info("Telemetry written to InfluxDB successfully.")
+        logger.debug("Telemetry object: %s", telemetry)
     except UnicodeDecodeError as exc:
         logger.warning("Failed to decode MQTT payload: %s", exc)
     except ValueError as exc:
         logger.warning("Failed to parse MQTT payload: %s", exc)
+    except Exception:
+        logger.exception("Failed to process or store telemetry")
 
 
 def on_connect(_client: Client, _userdata: Any, _flags: dict, rc: int):
