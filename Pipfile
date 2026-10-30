@@ -12,6 +12,8 @@ bambu-mqtt = {path = ".", editable = true}
 [dev-packages]
 black = "*"
 pylint = "*"
+build = "*"
+twine = "*"
 
 [requires]
 python_version = "3.14"
