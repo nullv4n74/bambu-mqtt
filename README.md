@@ -21,7 +21,7 @@ Designed for self-hosted monitoring setups using InfluxDB and Grafana.
 ## Architecture
 
 ```mermaid
-       flowchart TD
+flowchart TD
     A["Bambu Lab Printer"] -->|MQTT over TLS| B["MQTT Client"]
     B --> C["Telemetry Parser"]
     C --> D["Python Dataclasses"]
@@ -41,12 +41,41 @@ Designed for self-hosted monitoring setups using InfluxDB and Grafana.
 
 - A compatible Bambu Lab printer with local MQTT access.
 - Developer mode enabled on the printer, where required.
-- Python.
+- Python 3.14 or newer.
 - An MQTT TLS certificate.
 - An InfluxDB 2.x instance.
 - An InfluxDB API token with write permissions.
 
 ## Installation
+
+### Install from PyPI
+
+The recommended installation method is PyPI:
+
+```bash
+pip install bambu-mqtt
+```
+
+### Install in a virtual environment
+
+To keep dependencies isolated from your system Python:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install bambu-mqtt
+```
+
+### Verify installation
+
+Check the installed version and available arguments:
+
+```bash
+bambu-mqtt --version
+bambu-mqtt --help
+```
+
+### Install from source
 
 Clone the repository:
 
@@ -55,17 +84,15 @@ git clone https://github.com/NullVanta/bambu-mqtt.git
 cd bambu-mqtt
 ```
 
-Install the project dependencies using Pipenv:
+Install the project:
 
 ```bash
-pipenv install
+pip install .
 ```
 
-For development dependencies:
+### Arch Linux
 
-```bash
-pipenv install --dev
-```
+An AUR package (`python-bambu-mqtt`) is planned.
 
 ## Configuration
 
@@ -89,18 +116,40 @@ Set your InfluxDB token as an environment variable:
 export INFLUXDB_TOKEN="your-influxdb-token"
 ```
 
+Alternatively, supply it through `--influx-token`.
+
 ## Usage
 
-Start the collector:
+Start the collector using the installed command:
 
 ```bash
-pipenv run python -m bambu_mqtt \
+bambu-mqtt \
     --host 192.168.0.240 \
     --cert ./blcert.pem \
     --access-code YOUR_ACCESS_CODE \
     --influx-url http://localhost:8086 \
     --influx-org YOUR_ORG \
     --influx-bucket bambulab
+```
+
+If `INFLUXDB_TOKEN` is not set, provide the token explicitly:
+
+```bash
+bambu-mqtt \
+    --host 192.168.0.240 \
+    --cert ./blcert.pem \
+    --access-code YOUR_ACCESS_CODE \
+    --influx-token YOUR_INFLUX_TOKEN \
+    --influx-org YOUR_ORG \
+    --influx-bucket bambulab
+```
+
+### Alternative invocation
+
+The application can also be launched through Python's module interface:
+
+```bash
+python -m bambu_mqtt --help
 ```
 
 ### Command-line arguments
@@ -191,7 +240,6 @@ Example output:
 INFO | Connected to printer
 DEBUG | Subscribed to MQTT topic
 INFO | Received MQTT message, parsing now
-INFO | Connecting to InfluxDB
 INFO | Successfully connected to InfluxDB
 DEBUG | Successfully wrote 6 telemetry points
 INFO | Telemetry written to InfluxDB successfully
@@ -203,16 +251,28 @@ Logging verbosity can be adjusted using `--log-level`.
 
 The project uses Pipenv for dependency management.
 
-Install development dependencies:
+Clone the repository and install development dependencies:
 
 ```bash
 pipenv install --dev
 ```
 
+Install the project in editable mode to expose the console command:
+
+```bash
+pipenv install -e .
+```
+
 Run the application:
 
 ```bash
-pipenv run python -m bambu_mqtt
+pipenv run bambu-mqtt --help
+```
+
+The Python module invocation is also supported:
+
+```bash
+pipenv run python -m bambu_mqtt --help
 ```
 
 ### Code quality
@@ -227,6 +287,20 @@ Run the checks:
 ```bash
 pipenv run black --check bambu_mqtt
 pipenv run pylint bambu_mqtt
+```
+
+### Building distributions
+
+Build source and wheel distributions:
+
+```bash
+pipenv run python -m build
+```
+
+Validate the distributions:
+
+```bash
+pipenv run twine check dist/*
 ```
 
 ## Project status

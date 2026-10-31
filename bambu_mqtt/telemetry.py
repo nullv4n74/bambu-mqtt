@@ -1,4 +1,3 @@
-
 """Parse and normalize Bambu Lab H2S printer telemetry."""
 
 from dataclasses import dataclass, field
@@ -9,7 +8,7 @@ def _as_float(value: Any) -> float | None:
     """Convert a value to float."""
     try:
         return float(value) if value is not None else None
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 
@@ -17,7 +16,7 @@ def _as_int(value: Any) -> int | None:
     """Convert a value to int."""
     try:
         return int(value) if value is not None else None
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 
@@ -49,7 +48,6 @@ class PrinterStatus:
         )
 
 
-
 @dataclass
 class Temperature:
     """Printer temperature readings."""
@@ -75,12 +73,11 @@ class Temperature:
             bed=_as_float(data.get("bed_temper")),
             bed_target=_as_float(data.get("bed_target_temper")),
             chamber=(
-                _as_float(ctc_info.get("temp"))
-                if isinstance(ctc_info, dict)
-                else None
+                _as_float(ctc_info.get("temp")) if isinstance(ctc_info, dict) else None
             ),
             chamber_target=None,
         )
+
 
 @dataclass
 class Connectivity:
@@ -116,9 +113,7 @@ class AMSTray:
             id=_as_int(data.get("id")),
             filament_type=_as_str(data.get("tray_type")),
             color=_as_str(data.get("tray_color")),
-            remaining=(
-                remaining if remaining is not None and remaining >= 0 else None
-            ),
+            remaining=(remaining if remaining is not None and remaining >= 0 else None),
             nozzle_temp_min=_as_float(data.get("nozzle_temp_min")),
             nozzle_temp_max=_as_float(data.get("nozzle_temp_max")),
             tray_diameter=_as_float(data.get("tray_diameter")),
@@ -140,11 +135,11 @@ class AMSStatus:
     def from_dict(cls, data: dict[str, Any]) -> "AMSStatus":
         tray_data = data.get("tray", [])
 
-        trays = [
-            AMSTray.from_dict(tray)
-            for tray in tray_data
-            if isinstance(tray, dict)
-        ] if isinstance(tray_data, list) else []
+        trays = (
+            [AMSTray.from_dict(tray) for tray in tray_data if isinstance(tray, dict)]
+            if isinstance(tray_data, list)
+            else []
+        )
 
         return cls(
             id=_as_str(data.get("id")),
@@ -175,16 +170,14 @@ class Telemetry:
 
         ams_container = print_data.get("ams", {})
         ams_units = (
-            ams_container.get("ams", [])
-            if isinstance(ams_container, dict)
-            else []
+            ams_container.get("ams", []) if isinstance(ams_container, dict) else []
         )
 
-        ams = [
-            AMSStatus.from_dict(unit)
-            for unit in ams_units
-            if isinstance(unit, dict)
-        ] if isinstance(ams_units, list) else []
+        ams = (
+            [AMSStatus.from_dict(unit) for unit in ams_units if isinstance(unit, dict)]
+            if isinstance(ams_units, list)
+            else []
+        )
 
         return cls(
             printer=PrinterStatus.from_dict(print_data),
